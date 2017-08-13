@@ -1,22 +1,37 @@
 #include <boost/asio.hpp>
+#include <iostream>
 
 using namespace boost;
 
 int main() {
-  // Step 1. Here we assume that the server application has already obtained the protocol port number.
-  unsigned short port_num = 3333;
 
-  // Step 2. Create special object of asio::ip::address class that specifies all IP-addresses available on the host.
-  // Note that here we assume that server works over IPv6 protocol.
-  asio::ip::address ip_address = asio::ip::address_v6::any();
+  /* Creating an active TCP socket */
 
-  // Step 3. Instantiate the object of the asio::ip::tcp::endpoint class from the address object created in step 2
-  // and a port number
-  asio::ip::tcp::endpoint ep(ip_address, port_num);
-  // asio::ip::udp::endpoint ep(ip_address, port_num);
+  // Step 1. An instance of 'io_service' class is required by socket constructor.
+  asio::io_service ios;
 
-  // Step 4. The endpoint is created and can be used to specify the IP addresses and a port number on which the server
-  // application wants to listen for incoming connections.
+  // Step 2. Creating an object of 'tcp' class representing a TCP protocol with IPv4 as underlying protocol.
+  // It provides no functionality, but rather acts like a data structure that contains a set of values that
+  // describe the protocol.
+  asio::ip::tcp protocol = asio::ip::tcp::v4();
+
+  // Step 3. Instantiating an active TCP socket object. Note that this constructor does not allocate the underlying
+  // operating system's socket object
+  asio::ip::tcp::socket sock(ios);
+
+  // Used to store information about error that happens while opening the socket.
+  boost::system::error_code ec;
+
+  // Step 4. Opening the socket. The real operating system's socket is allocated.
+  sock.open(protocol, ec);
+
+  if(ec.value() != 0) {
+    // Failed to open socket.
+    std::cout
+      << "Failed to open the socket! Error code = "
+      << ec.value() << ". Message: " << ec.message();
+    return ec.value();
+  }
 
   return EXIT_SUCCESS;
 }
