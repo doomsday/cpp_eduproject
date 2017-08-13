@@ -5,28 +5,22 @@ using namespace boost;
 
 int main() {
 
-  /* Creating an active UDP socket */
+  /* Creating a passive (acceptor) TCP socket */
 
   // Step 1. An instance of 'io_service' class is required by socket constructor.
   asio::io_service ios;
 
-  // Step 2. Creating an object of 'udp' class representing a UDP protocol with IPv6 as underlying protocol.
-  asio::ip::udp protocol = asio::ip::udp::v6();
+  // Step 2. Creating an object of 'tcp' class representing a TCP protocol with IPv6 as underlying protocol.
+  asio::ip::tcp protocol = asio::ip::tcp::v6();
 
-  // Step 3. Instantiating an active UDP socket object.
-  asio::ip::udp::socket sock(ios);
-
-  // Used to store information about error that happens while opening the socket.
-  boost::system::error_code ec;
-
-  // Step 4. Opening the socket.
-  sock.open(protocol, ec);
-  if (ec.value() != 0) {
+  // Step 3. Instantiating an acceptor socket object.
+  // Step 4. Opening the acceptor socket.
+  try {
+    asio::ip::tcp::acceptor acceptor(ios, protocol);
+  } catch (boost::system::system_error &error) {
     // Failed to open the socket.
-    std::cout
-        << "Failed to open the socket! Error code = "
-        << ec.value() << ". Message: " << ec.message();
-    return ec.value();
+    std::cout << "Error occurred! Error code = " << error.code()
+      << ". Message: " << error.what();
   }
 
   return EXIT_SUCCESS;
