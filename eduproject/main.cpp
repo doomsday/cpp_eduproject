@@ -5,34 +5,38 @@ using namespace boost;
 
 int main() {
 
-  /* Connecting a socket */
+  /* Connect a socket to a server application represented by a DNS name and a protocol port number */
 
-  // Step 1. Assume that the client application has already // obtained the IP address and protocol port number of the
-  // target server.
-  std::string raw_ip_address = "127.0.0.1";
-  unsigned short port_num = 27017;
+  // Step1. Assume that the client application has already obtained the DNS name and protocol port number.
+  std::string host = "google.com";
+  std::string port_num = "80";
+
+  // Used by a 'resolver' and a 'socket'.
+  asio::io_service ios;
+
+  // Creating a resolver's query.
+  asio::ip::tcp::resolver::query resolver_query(host, port_num, asio::ip::tcp::resolver::query::numeric_service);
+
+  // Creating a resolver.
+  asio::ip::tcp::resolver resolver(ios);
 
   try {
-    // Step 2. Creating an endpoint designating a target server application.
-    asio::ip::tcp::endpoint ep(asio::ip::address::from_string(raw_ip_address), port_num);
+    // Step 2. Resolving a DNS name.
+    asio::ip::tcp::resolver::iterator it = resolver.resolve(resolver_query);
 
-    asio::io_service ios;
+    // Step 3. Creating a socket. We don't open the socket yet (no endpoints passed as second argument) because we don't
+    // know the version of IP addresses to which the provided DNS name will resolve.
+    asio::ip::tcp::socket sock(ios);
 
-    // Step 3. Creating and opening a socket. This function connects the socket to the server. The connection is
-    // performed synchronously. Before performing the connection establishment procedure, the socket's connect() method
-    // will bind the socket to the endpoint consisting of an IP address and a protocol port number chosen by the
-    // operating system
-    asio::ip::tcp::socket sock(ios, ep.protocol());
-
-    // Step 4. Connecting a socket.
-    sock.connect(ep);
+    // Step 4. asio::connect() method iterates over each endpoint until successfully connects to one of them. It will
+    // throw an exception if it fails to connect to all the endpoints or if other error occurs.
+    asio::connect(sock, it);
 
     // At this point socket 'sock' is connected to the server application and can be used to send data to or receive
     // data from it.
   }
-    // Overloads of asio::ip::address::from_string() and asio::ip::tcp::socket::connect() used here throw exceptions in
-    // case of error condition. Both methods have overloads that don't throw exceptions and accept an object of
-    // the boost::system::error_code class.
+    // Overloads of asio::ip::tcp::resolver::resolve and asio::connect() used here throw exceptions in case of error
+    // condition.
     catch (system::system_error &e) {
       std::cout << "Error occurred! Error code = " << e.code()
                 << ". Message: " << e.what();
