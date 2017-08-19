@@ -1,35 +1,49 @@
 #include <boost/asio.hpp>
 #include <iostream>
-#include <memory>
 
 using namespace boost;
 
+void writeToSocket(asio::ip::tcp::socket &sock);
+
 int main() {
 
-  /* Using extensible stream-oriented I/O buffers */
+  /* Writing to a TCP socket synchronously */
 
-  asio::streambuf buf;
+  std::string raw_ip_address = "127.0.0.1";
+  unsigned short port_num = 3333;
 
-  std::ostream output(&buf);
+  try {
+    asio::ip::tcp::endpoint ep(asio::ip::address::from_string(raw_ip_address), port_num);
 
-  // Writing the message to the stream-based buffer. String is written to the output stream object, which in turn
-  // redirects the data to the buf stream buffer.
-  output << "Message1\nMessage2";
+    asio::io_service ios;
 
-  // Now we want to read all data from a streambuf until '\n' delimiter. Instantiate an input stream which uses our
-  // stream buffer.
-  std::istream input(&buf);
+    // Step 1. Allocating and opening the socket.
+    asio::ip::tcp::socket sock(ios, ep.protocol());
 
-  // We'll read data into this string.
-  std::string message1;
+    sock.connect(ep);
 
-  std::getline(input, message1);
+    writeToSocket(sock);
 
-  // Now message1 string contains 'Message1'.
-
-  std::cout << "First part: " << message1 << "\n";
-  std::getline(input, message1);
-  std::cout << "Second part: " << message1 << std::endl;
+  } catch (system::system_error &e) {
+    std::cout << "Error occurred! Error code = " << e.code()
+              << ". Message: " << e.what();
+    return e.code().value();
+  }
 
   return EXIT_SUCCESS;
+}
+
+void writeToSocket(asio::ip::tcp::socket &sock) {
+  // Step 2. Allocating and filling the buffer.
+  std::string buf = "Hello";
+
+  std::size_t total_bytes_written = 0;
+
+  // Step 3. Run the loop until all data is written to the socket.
+  while (total_bytes_written != buf.length()) {
+    total_bytes_written += sock.write_some(
+        asio::buffer(buf.c_str() + total_bytes_written,
+                     buf.length() - total_bytes_written)
+    );
+  }
 }
