@@ -1,52 +1,40 @@
 #include <boost/asio.hpp>
 #include <iostream>
+#include <memory>
 
 using namespace boost;
 
 int main() {
 
-  /* Accepting connections. Describes how to switch an acceptor socket into listening mode and accept incoming
-   * connection requests in a TCP server application */
+  /* Using fixed length I/O buffers */
 
-  // The size of the queue containing the pending connection requests. When the queue becomes full, the new connection
-  // requests are rejected by the operating system.
-  const int BACKLOG_SIZE = 30;
+  // OUTPUT BUFFER
 
-  // Step 1. Here we assume that the server application has already obtained the protocol port number.
-  unsigned short port_num = 3333;
+  // 'out_data' is the raw buffer.
+  std::string out_data;
 
-  // Step 2. Creating a server endpoint.
-  asio::ip::tcp::endpoint ep(asio::ip::address_v4::any(), port_num);
+  // Step 1, 2. Allocate a buffer with the data that is to be used as the output.
+  out_data = "Hello";
 
-  asio::io_service ios;
+  // Step 3. Represent the buffer as an object that satisfies ConstBufferSequence concept's requirements.
+  asio::const_buffers_1 output_buf = asio::buffer(out_data);
 
-  try {
-    // Step 3. Instantiating and opening an acceptor socket.
-    asio::ip::tcp::acceptor acceptor(ios, ep.protocol());
+  // Step 4. 'output_buf' is the representation of the
+  // buffer 'buf' that can be used in Boost.Asio output
+  // operations.
 
-    // Step 4. Binding the acceptor socket to server endpoint.
-    acceptor.bind(ep);
+  // INPUT BUFFER
 
-    // Step 5. Starting to listen for incoming connection requests. Unless we call the listen() method on the acceptor
-    // object, all connection requests arriving at corresponding endpoint will be rejected by the operating system
-    // network software.
-    acceptor.listen(BACKLOG_SIZE);
+  // We expect to receive a block of data no more than 20 bytes long.
+  const size_t BUF_SIZE_BYTES = 20;
 
-    // Step 6. Creating an active socket.
-    asio::ip::tcp::socket sock(ios);
+  // Step 1. Allocating the buffer.
+  auto inp_data(std::make_unique<char[]>(BUF_SIZE_BYTES));
 
-    // Step 7. Processing the next connection request and connecting the active socket to the client. Blocks execution
-    // until a new connection request arrives.
-    acceptor.accept(sock);
+  // Step 2. Creating buffer representation that satisfies MutableBufferSequence concept requirements.
+  asio::mutable_buffers_1 input_buf = asio::buffer(static_cast<void *>(inp_data.get()), BUF_SIZE_BYTES);
 
-    // At this point 'sock' socket is connected to the client application and can be used to send data to or receive
-    // data from it.
-
-  } catch (system::system_error &e) {
-    std::cout << "Error occurred! Error code = " << e.code()
-              << ". Message: " << e.what();
-    return e.code().value();
-  }
+  // Step 3. 'input_buf' is the representation of the buffer 'buf' tat can be used in Boost.Asio input operations.
 
   return EXIT_SUCCESS;
 }
