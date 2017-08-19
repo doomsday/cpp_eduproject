@@ -3,11 +3,11 @@
 
 using namespace boost;
 
-void writeToSocket(asio::ip::tcp::socket &sock);
+std::string readFromSocket(asio::ip::tcp::socket &sock);
 
 int main() {
 
-  /* Writing to a TCP socket synchronously (simplified using asio::write) */
+  /* Reading from a TCP socket synchronously */
 
   std::string raw_ip_address = "127.0.0.1";
   unsigned short port_num = 3333;
@@ -17,26 +17,31 @@ int main() {
 
     asio::io_service ios;
 
-    // Step 1. Allocating and opening the socket.
     asio::ip::tcp::socket sock(ios, ep.protocol());
 
     sock.connect(ep);
 
-    writeToSocket(sock);
+    readFromSocket(sock);
 
   } catch (system::system_error &e) {
     std::cout << "Error occurred! Error code = " << e.code()
               << ". Message: " << e.what();
-    return e.code().value();
   }
 
   return EXIT_SUCCESS;
 }
 
-void writeToSocket(asio::ip::tcp::socket &sock) {
-  // Step 2. Allocating and filling the buffer.
-  std::string buf = "Hello";
+std::string readFromSocket(asio::ip::tcp::socket &sock) {
+  const unsigned char MESSAGE_SIZE = 7;
+  char buf[MESSAGE_SIZE];
+  std::size_t total_bytes_read = 0;
 
-  // Write whole buffer to the socket.
-  asio::write(sock, asio::buffer(buf));
+  while (total_bytes_read != MESSAGE_SIZE) {
+    total_bytes_read += sock.read_some(
+        asio::buffer(buf + total_bytes_read,
+                     MESSAGE_SIZE - total_bytes_read)
+    );
+  }
+
+  return std::string(buf, total_bytes_read);
 }
