@@ -5,41 +5,46 @@ using namespace boost;
 
 int main() {
 
-  /* Connect a socket to a server application represented by a DNS name and a protocol port number */
+  /* Accepting connections. Describes how to switch an acceptor socket into listening mode and accept incoming
+   * connection requests in a TCP server application */
 
-  // Step1. Assume that the client application has already obtained the DNS name and protocol port number.
-  std::string host = "google.com";
-  std::string port_num = "80";
+  // The size of the queue containing the pending connection requests. When the queue becomes full, the new connection
+  // requests are rejected by the operating system.
+  const int BACKLOG_SIZE = 30;
 
-  // Used by a 'resolver' and a 'socket'.
+  // Step 1. Here we assume that the server application has already obtained the protocol port number.
+  unsigned short port_num = 3333;
+
+  // Step 2. Creating a server endpoint.
+  asio::ip::tcp::endpoint ep(asio::ip::address_v4::any(), port_num);
+
   asio::io_service ios;
 
-  // Creating a resolver's query.
-  asio::ip::tcp::resolver::query resolver_query(host, port_num, asio::ip::tcp::resolver::query::numeric_service);
-
-  // Creating a resolver.
-  asio::ip::tcp::resolver resolver(ios);
-
   try {
-    // Step 2. Resolving a DNS name.
-    asio::ip::tcp::resolver::iterator it = resolver.resolve(resolver_query);
+    // Step 3. Instantiating and opening an acceptor socket.
+    asio::ip::tcp::acceptor acceptor(ios, ep.protocol());
 
-    // Step 3. Creating a socket. We don't open the socket yet (no endpoints passed as second argument) because we don't
-    // know the version of IP addresses to which the provided DNS name will resolve.
+    // Step 4. Binding the acceptor socket to server endpoint.
+    acceptor.bind(ep);
+
+    // Step 5. Starting to listen for incoming connection requests. Unless we call the listen() method on the acceptor
+    // object, all connection requests arriving at corresponding endpoint will be rejected by the operating system
+    // network software.
+    acceptor.listen(BACKLOG_SIZE);
+
+    // Step 6. Creating an active socket.
     asio::ip::tcp::socket sock(ios);
 
-    // Step 4. asio::connect() method iterates over each endpoint until successfully connects to one of them. It will
-    // throw an exception if it fails to connect to all the endpoints or if other error occurs.
-    asio::connect(sock, it);
+    // Step 7. Processing the next connection request and connecting the active socket to the client. Blocks execution
+    // until a new connection request arrives.
+    acceptor.accept(sock);
 
-    // At this point socket 'sock' is connected to the server application and can be used to send data to or receive
+    // At this point 'sock' socket is connected to the client application and can be used to send data to or receive
     // data from it.
-  }
-    // Overloads of asio::ip::tcp::resolver::resolve and asio::connect() used here throw exceptions in case of error
-    // condition.
-    catch (system::system_error &e) {
-      std::cout << "Error occurred! Error code = " << e.code()
-                << ". Message: " << e.what();
+
+  } catch (system::system_error &e) {
+    std::cout << "Error occurred! Error code = " << e.code()
+              << ". Message: " << e.what();
     return e.code().value();
   }
 
