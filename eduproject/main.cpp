@@ -7,7 +7,7 @@ std::string readFromSocket(asio::ip::tcp::socket &sock);
 
 int main() {
 
-  /* Reading from a TCP socket synchronously  (simplified using asio::read) */
+  /* Reading from a TCP socket synchronously (read until a specific symbol) */
 
   std::string raw_ip_address = "127.0.0.1";
   unsigned short port_num = 3333;
@@ -32,10 +32,20 @@ int main() {
 }
 
 std::string readFromSocket(asio::ip::tcp::socket &sock) {
-  const unsigned char MESSAGE_SIZE = 7;
-  char buf[MESSAGE_SIZE];
+  asio::streambuf buf;
 
-  asio::read(sock, asio::buffer(buf, MESSAGE_SIZE));
+  // Synchronously read data from the socket until '\n' symbol is encountered.
+  asio::read_until(sock, buf, '\n');
 
-  return std::string(buf, MESSAGE_SIZE);
+  std::string message;
+
+  // Because buffer 'buf' may contain some other data after '\n' symbol, we have to parse the buffer and extract only
+  // symbols before the delimiter.
+
+  std::istream input_stream(&buf);
+  std::getline(input_stream, message);
+
+  std::cout << message;
+
+  return message;
 }
