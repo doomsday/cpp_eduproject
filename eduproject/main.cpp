@@ -3,15 +3,7 @@
 
 using namespace boost;
 
-// Keeps objects we need in a callback to identify whether all data has been read from the socket and to initiate next
-// async reading if needed.
-struct Session {
-  std::shared_ptr<asio::ip::tcp::socket> sock;
-  std::unique_ptr<char[]> buf;
-  unsigned int buf_size;
-};
-
-void readFromSocket(const std::shared_ptr<asio::ip::tcp::socket> &sock);
+void readFromSocket(asio::ip::tcp::socket &sock);
 
 int main() {
 
@@ -25,8 +17,8 @@ int main() {
     asio::io_service ios;
 
     // Step 3. Allocating, opening and connecting a socket.
-    auto sock(std::make_shared<asio::ip::tcp::socket>(ios, ep.protocol()));
-    sock->connect(ep);
+    auto sock = asio::ip::tcp::socket(ios, ep.protocol());
+    sock.connect(ep);
 
     readFromSocket(sock);
 
@@ -43,7 +35,7 @@ int main() {
   return EXIT_SUCCESS;
 }
 
-void readFromSocket(const std::shared_ptr<asio::ip::tcp::socket> &sock) {
+void readFromSocket(asio::ip::tcp::socket &sock) {
   // Step 4. Allocating the buffer.
   const unsigned int MESSAGE_SIZE = 7;
 
@@ -51,7 +43,7 @@ void readFromSocket(const std::shared_ptr<asio::ip::tcp::socket> &sock) {
 
   // Step 5. Initiating asynchronous reading operation.
   asio::async_read(
-      *sock,
+      sock,
       asio::buffer(buf.get(), MESSAGE_SIZE),
       [](const boost::system::error_code &ec, std::size_t bytes_transferred) {
         // Function used as a callback for asynchronous reading operation. Checks if all data has been read from the
