@@ -8,15 +8,14 @@ using namespace boost;
 struct Session {
   std::shared_ptr<asio::ip::tcp::socket> sock;
   std::unique_ptr<char[]> buf;
-  std::size_t total_bytes_read;
   unsigned int buf_size;
 };
 
-void readFromSocket(std::shared_ptr<asio::ip::tcp::socket> sock);
+void readFromSocket(const std::shared_ptr<asio::ip::tcp::socket> &sock);
 
 int main() {
 
-  /* Reading from a TCP socket asynchronously */
+  /* Reading from a TCP socket asynchronously (simplified using asio::async_read) */
 
   std::string raw_ip_address = "127.0.0.1";
   unsigned short port_num = 3333;
@@ -31,7 +30,8 @@ int main() {
 
     readFromSocket(sock);
 
-    // Step 6.
+    // Step 6. Run the io_service object's event processing loop. The run() function blocks until all work has finished
+    // and there are no more handlers to be dispatched, or until the io_service has been stopped.
     ios.run();
   } catch (system::system_error &e) {
     std::cout << "Error occurred! Error code = "
@@ -43,42 +43,25 @@ int main() {
   return EXIT_SUCCESS;
 }
 
-// Function used as a callback for asynchronous reading operation. Checks if all data has been read from the socket and
-// initiates new reading operation if needed.
-void callback(const boost::system::error_code &ec, std::size_t bytes_transferred, std::shared_ptr<Session> s) {
-  if (ec != 0) {
-    std::cout << "Error occurred! Error code = "
-              << ec.value()
-              << ". Message: " << ec.message();
-    return;
-  }
-
-  s->total_bytes_read += bytes_transferred;
-
-  if (s->total_bytes_read == s->buf_size) {
-    return;
-  }
-
-  s->sock->async_read_some(
-      asio::buffer(s->buf.get() + s->total_bytes_read, s->buf_size - s->total_bytes_read),
-      std::bind(callback, std::placeholders::_1, std::placeholders::_2, s)
-  );
-}
-
-void readFromSocket(std::shared_ptr<asio::ip::tcp::socket> sock) {
-  auto s(std::make_shared<Session>());
-
+void readFromSocket(const std::shared_ptr<asio::ip::tcp::socket> &sock) {
   // Step 4. Allocating the buffer.
   const unsigned int MESSAGE_SIZE = 7;
 
-  s->buf = std::make_unique<char[]>(MESSAGE_SIZE);
-  s->total_bytes_read = 0;
-  s->sock = std::move(sock);
-  s->buf_size = MESSAGE_SIZE;
+  auto buf(std::make_unique<char[]>(MESSAGE_SIZE));
 
   // Step 5. Initiating asynchronous reading operation.
-  s->sock->async_read_some(
-      asio::buffer(s->buf.get(), s->buf_size),
-      std::bind(callback, std::placeholders::_1, std::placeholders::_2, s)
+  asio::async_read(
+      *sock,
+      asio::buffer(buf.get(), MESSAGE_SIZE),
+      [](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+        // Function used as a callback for asynchronous reading operation. Checks if all data has been read from the
+        // socket and initiates new reading operation if needed.
+        if (ec != 0) {
+          std::cout << "Error occurred! Error code = "
+                    << ec.value()
+                    << ". Message: " << ec.message();
+          return;
+        }
+      }
   );
 }
