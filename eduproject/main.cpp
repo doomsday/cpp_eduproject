@@ -3,49 +3,80 @@
 
 using namespace boost;
 
-std::string readFromSocket(asio::ip::tcp::socket &sock);
+void writeToSocket(std::shared_ptr<asio::ip::tcp::socket> sock);
+
+// Step 1. Keeps objects we need in a callback to identify whether all data has been written to the socket and to
+// initiate next async writing operation if needed.
+struct Session {
+  std::shared_ptr<asio::ip::tcp::socket> sock;
+  std::string buf;
+  std::size_t total_bytes_written;
+};
 
 int main() {
 
-  /* Reading from a TCP socket synchronously (read until a specific symbol) */
+  /* Writing to a TCP socket asynchronously */
 
   std::string raw_ip_address = "127.0.0.1";
   unsigned short port_num = 3333;
 
   try {
     asio::ip::tcp::endpoint ep(asio::ip::address::from_string(raw_ip_address), port_num);
-
     asio::io_service ios;
 
-    asio::ip::tcp::socket sock(ios, ep.protocol());
+    // Step 3. Allocating, opening and connecting a socket.
+    auto sock(std::make_shared<asio::ip::tcp::socket>(ios, ep.protocol()));
+    sock->connect(ep);
+    // This function initiates an asynchronous write operation and returns.
+    writeToSocket(sock);
 
-    sock.connect(ep);
-
-    readFromSocket(sock);
-
+    // Step 6. Run the io_service object's event processing loop. The run() function blocks until all work has finished
+    // and there are no more handlers to be dispatched, or until the io_service has been stopped.
+    ios.run();
   } catch (system::system_error &e) {
-    std::cout << "Error occurred! Error code = " << e.code()
-              << ". Message: " << e.what();
+    std::cout << "Error occurred! Error code = "
+              << e.code() << ". Message: "
+              << e.what();
+    return e.code().value();
   }
 
   return EXIT_SUCCESS;
 }
 
-std::string readFromSocket(asio::ip::tcp::socket &sock) {
-  asio::streambuf buf;
+// Step 2. Function used as a callback for asynchronous writing operation. Checks if all data from the buffer has been
+// written to the socket and initiates new asynchronous writing operation if needed.
+void callback(const boost::system::error_code &ec, std::size_t bytes_transferred, std::shared_ptr<Session> s) {
+  if (ec != 0) {
+    std::cout << "Error occurred! Error code = "
+              << ec.value() << ". Message: "
+              << ec.message();
+    return;
+  }
 
-  // Synchronously read data from the socket until '\n' symbol is encountered.
-  asio::read_until(sock, buf, '\n');
+  s->total_bytes_written += bytes_transferred;
 
-  std::string message;
+  // When the callback function returns without initiating a new asynchronous operation, the asio::io_service::run()
+  // method, called in the main() function, unblocks the thread of execution and returns.
+  if (s->total_bytes_written == s->buf.length()) {
+    return;
+  }
 
-  // Because buffer 'buf' may contain some other data after '\n' symbol, we have to parse the buffer and extract only
-  // symbols before the delimiter.
+  s->sock->async_write_some(
+      asio::buffer(s->buf.c_str() + s->total_bytes_written, s->buf.length() - s->total_bytes_written),
+      std::bind(callback, std::placeholders::_1, std::placeholders::_2, s)
+  );
+}
 
-  std::istream input_stream(&buf);
-  std::getline(input_stream, message);
+void writeToSocket(std::shared_ptr<asio::ip::tcp::socket> sock) {
+  auto s(std::make_shared<Session>());
 
-  std::cout << message;
+  // Step 4. Allocating and filling the buffer.
+  s->buf = std::string("Hello everybody\n");
+  s->total_bytes_written = 0;
+  s->sock = sock;
 
-  return message;
+  // Step 5. Initiating asynchronous write operation.
+  s->sock->async_write_some(
+      asio::buffer(s->buf), std::bind(callback, std::placeholders::_1, std::placeholders::_2, s)
+  );
 }
