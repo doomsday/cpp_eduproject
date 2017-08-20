@@ -3,19 +3,11 @@
 
 using namespace boost;
 
-void writeToSocket(std::shared_ptr<asio::ip::tcp::socket> sock);
-
-// Step 1. Keeps objects we need in a callback to identify whether all data has been written to the socket and to
-// initiate next async writing operation if needed.
-struct Session {
-  std::shared_ptr<asio::ip::tcp::socket> sock;
-  std::string buf;
-  std::size_t total_bytes_written;
-};
+void writeToSocket(const std::shared_ptr<asio::ip::tcp::socket> &sock);
 
 int main() {
 
-  /* Writing to a TCP socket asynchronously */
+  /* Writing to a TCP socket asynchronously (simplified using asio::async_write) */
 
   std::string raw_ip_address = "127.0.0.1";
   unsigned short port_num = 3333;
@@ -43,40 +35,24 @@ int main() {
   return EXIT_SUCCESS;
 }
 
-// Step 2. Function used as a callback for asynchronous writing operation. Checks if all data from the buffer has been
-// written to the socket and initiates new asynchronous writing operation if needed.
-void callback(const boost::system::error_code &ec, std::size_t bytes_transferred, std::shared_ptr<Session> s) {
-  if (ec != 0) {
-    std::cout << "Error occurred! Error code = "
-              << ec.value() << ". Message: "
-              << ec.message();
-    return;
-  }
-
-  s->total_bytes_written += bytes_transferred;
-
-  // When the callback function returns without initiating a new asynchronous operation, the asio::io_service::run()
-  // method, called in the main() function, unblocks the thread of execution and returns.
-  if (s->total_bytes_written == s->buf.length()) {
-    return;
-  }
-
-  s->sock->async_write_some(
-      asio::buffer(s->buf.c_str() + s->total_bytes_written, s->buf.length() - s->total_bytes_written),
-      std::bind(callback, std::placeholders::_1, std::placeholders::_2, s)
-  );
-}
-
-void writeToSocket(std::shared_ptr<asio::ip::tcp::socket> sock) {
-  auto s(std::make_shared<Session>());
+void writeToSocket(const std::shared_ptr<asio::ip::tcp::socket> &sock) {
 
   // Step 4. Allocating and filling the buffer.
-  s->buf = std::string("Hello everybody\n");
-  s->total_bytes_written = 0;
-  s->sock = sock;
+  std::string buf = std::string("Hello everybody\n");
 
   // Step 5. Initiating asynchronous write operation.
-  s->sock->async_write_some(
-      asio::buffer(s->buf), std::bind(callback, std::placeholders::_1, std::placeholders::_2, s)
+  asio::async_write(*sock, asio::buffer(buf),
+      [](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+        // Step 2. Function used as a callback for asynchronous writing operation. Checks if all data from the buffer
+        // has been written to the socket and initiates new asynchronous writing operation if needed.
+        if (ec != 0) {
+          std::cout << "Error occurred! Error code = "
+                    << ec.value() << ". Message: "
+                    << ec.message();
+          return;
+        }
+
+        // Here we know that all the data has been written to the socket.
+      }
   );
 }
