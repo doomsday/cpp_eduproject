@@ -6,7 +6,7 @@ all: eduproject.exe clean
 eduproject.exe: main.o file1.o file2.o
 	$(CC) main.o file1.o file2.o -o make-build/eduproject.exe
 
-main.o: eduproject/main.cpp
+main.o: eduproject/client.cpp
 	$(CC) -c eduproject/main.cpp
 
 file1.o: eduproject/file1.cpp
