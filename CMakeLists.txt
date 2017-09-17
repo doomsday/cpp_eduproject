@@ -7,9 +7,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -pedantic")
 
 set(SOURCE_FILES
         src/client.cpp
-        src/sync_udp_client.hpp)
+        src/async_tcp_client.hpp src/session.hpp)
 
-add_executable(src ${SOURCE_FILES})
+add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 find_package(Boost 1.64.0 COMPONENTS system thread filesystem REQUIRED)
 if (Boost_FOUND)
@@ -17,8 +17,9 @@ if (Boost_FOUND)
     message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
     message(STATUS "Boost_VERSION: ${Boost_VERSION}")
     include_directories(${Boost_INCLUDE_DIRS})
-    target_link_libraries(src ${Boost_LIBRARIES})
+    target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 endif ()
 
-target_link_libraries(src ws2_32)
+target_link_libraries(${PROJECT_NAME} ws2_32)
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "async_tcp_cl")
 
