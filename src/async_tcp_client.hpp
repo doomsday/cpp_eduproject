@@ -32,7 +32,7 @@ class async_tcp_client : public boost::noncopyable {
   // Class to inform the io_service when it has work to do. Keeps threads running event loop from exiting this loop when
   // there are no pending asynchronous operations.
   std::unique_ptr<asio::io_service::work> m_work;
-  std::unique_ptr<std::thread> m_thread;
+  std::list<std::unique_ptr<std::thread>> m_threads;
 
   // Method is called whenever the request completes with any result. Performs a cleanup and then to call a callback
   // provided by the caller.
@@ -67,13 +67,18 @@ class async_tcp_client : public boost::noncopyable {
 
  public:
   // Default constructor.
-  async_tcp_client() {
+  explicit async_tcp_client(unsigned char num_of_threads) {
     m_work = std::make_unique<asio::io_service::work>(m_ios);
-    m_thread = std::make_unique<std::thread>([this]() {
-      // The spawned thread plays the role of I/O thread in our application; in the context of this thread, the
-      // callbacks assigned asynchronous operations will be invoked.
-      m_ios.run();  // Run the io_service object's event processing loop.
-    });
+
+    for (unsigned char i = 1; i <= num_of_threads; i++) {
+      std::unique_ptr<std::thread> th(new std::thread([this](){
+        // Multiple threads may call the run() function to set up a pool of threads from which the io_service may
+        // execute handlers. All threads that are waiting in the pool are equivalent and the io_service may choose any
+        // one of them to invoke a handler.
+        m_ios.run();
+      }));
+      m_threads.push_back(std::move(th));
+    }
   }
 
   // This method initiates a request to the server.
@@ -155,10 +160,12 @@ class async_tcp_client : public boost::noncopyable {
   void close() {
     // Destroy work object. This allows the I/O thread to exit the event loop when there are no more pending async
     // operations.
-    m_work.reset(NULL);
+    m_work.reset(NULL); // The deleter will be invoked.
 
     // Wait for the I/O thread to exit.
-    m_thread->join();
+    for (auto& thread : m_threads) {
+      thread->join();
+    }
   }
 };
 

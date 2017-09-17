@@ -18,7 +18,7 @@ int main() {
 
   try {
 
-    async_tcp_client client;
+    async_tcp_client client(8);
 
     // Here we emulate the user's behavior.
 
