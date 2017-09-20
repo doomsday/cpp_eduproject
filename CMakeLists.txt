@@ -6,8 +6,8 @@ set(PROJECTNAME_ARCHITECTURE "x64")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -pedantic")
 
 set(SOURCE_FILES
-        src/client.cpp
-        src/async_tcp_client.hpp src/session.hpp)
+        src/main.cpp
+        src/service.hpp src/acceptor.hpp src/server.hpp)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
@@ -21,5 +21,5 @@ if (Boost_FOUND)
 endif ()
 
 target_link_libraries(${PROJECT_NAME} ws2_32)
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "async_tcp_cl")
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "sync_tcp_serv")
 
