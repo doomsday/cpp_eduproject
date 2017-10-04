@@ -1,5 +1,5 @@
 //
-// Implementing a synchronous iterative TCP server
+// Implementing an asynchronous iterative TCP server
 //
 
 #include <iostream>

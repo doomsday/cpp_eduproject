@@ -28,12 +28,16 @@ class server {
       m_stop(false) {}
 
   void start(unsigned short port_num) {
+    // The loop runs in a separate thread.
     m_thread = std::make_unique<std::thread>([this, port_num]() {
       run(port_num);
     });
   }
 
   // Synchronously stops the server.
+  // If at the moment when the Stop() method is called, there are no pending connection requests, the server will not be
+  // stopped until a new client connects and gets handled, which in general case may never happen and may lead to the
+  // server being blocked forever.
   void stop() {
     m_stop.store(true);
     m_thread->join();

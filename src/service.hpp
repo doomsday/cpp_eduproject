@@ -9,16 +9,27 @@
 
 using namespace boost;
 
-// Key functional component in the whole application.
+// Key functional component in the whole application. Implements the actual function (or service) provided by the server
+// to the clients.
 class service {
  public:
   service() = default;
 
-  void handle_client(asio::ip::tcp::socket &sock) {
+  void start_handling_client(const std::shared_ptr<asio::ip::tcp::socket> &sock) {
+    std::thread th([this, sock] () {
+      handle_client(sock);
+    });
+
+    // Separate the thread of execution from the thread object.
+    th.detach();
+  }
+
+ private:
+  void handle_client(const std::shared_ptr<asio::ip::tcp::socket> &sock) {
     try {
 
       asio::streambuf request;
-      asio::read_until(sock, request, '\n');
+      asio::read_until(*sock.get(), request, '\n');
 
       // Emulate request processing: intensively consume CPU.
       int i = 0;
@@ -31,13 +42,16 @@ class service {
 
       // Sending response.
       std::string response = "Response\n";
-      asio::write(sock, asio::buffer(response));
+      asio::write(*sock.get(), asio::buffer(response));
 
     } catch (system::system_error &e) {
       std::cout << "Error occurred! Error code = "
                 << e.code() << ". Message: "
                 << e.what();
     }
+
+    // Clean-up: delete the associated object of the Service class.
+    delete this;
   }
 };
 
