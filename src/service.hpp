@@ -6,6 +6,7 @@
 #include <atomic>
 #include <memory>
 #include <iostream>
+#include <utility>
 
 using namespace boost;
 
@@ -13,45 +14,69 @@ using namespace boost;
 // to the clients.
 class service {
  public:
-  service() = default;
+  explicit service(std::shared_ptr<asio::ip::tcp::socket> sock) :
+      m_sock(std::move(sock)) {}
 
-  void start_handling_client(const std::shared_ptr<asio::ip::tcp::socket> &sock) {
-    std::thread th([this, sock] () {
-      handle_client(sock);
+  void start_handling() {
+    asio::async_read_until(*m_sock.get(), m_request, '\n', [this](const boost::system::error_code &ec,
+                                                                  std::size_t bytes_transferred) {
+      on_request_received(ec, bytes_transferred);
     });
-
-    // Separate the thread of execution from the thread object.
-    th.detach();
   }
 
  private:
-  void handle_client(const std::shared_ptr<asio::ip::tcp::socket> &sock) {
-    try {
+  std::shared_ptr<asio::ip::tcp::socket> m_sock;
+  std::string m_response;
+  asio::streambuf m_request;
 
-      asio::streambuf request;
-      asio::read_until(*sock.get(), request, '\n');
-
-      // Emulate request processing: intensively consume CPU.
-      int i = 0;
-      while (i != 1000000) {
-        i++;
-      }
-      // Sleep for some time to emulate such operations as reading a fle or communicating with a peripheral device
-      // synchronously.
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-      // Sending response.
-      std::string response = "Response\n";
-      asio::write(*sock.get(), asio::buffer(response));
-
-    } catch (system::system_error &e) {
+  void on_request_received(const boost::system::error_code &ec, std::size_t bytes_transferred) {
+    if (ec != 0) {
       std::cout << "Error occurred! Error code = "
-                << e.code() << ". Message: "
-                << e.what();
+                << ec.value()
+                << ". Message: " << ec.message();
+      on_finish();
+      return;
     }
 
-    // Clean-up: delete the associated object of the Service class.
+    // Process the request.
+    m_response = process_request(m_request);
+
+    // Initialize asynchronous write operation.
+    asio::async_write(*m_sock.get(), asio::buffer(m_response), [this](const boost::system::error_code &ec,
+                                                                      std::size_t bytes_transferred) {
+      on_response_set(ec, bytes_transferred);
+    });
+  }
+
+  void on_response_set(const boost::system::error_code &ec, std::size_t bytes_transferred) {
+    if (ec != 0) {
+      std::cout << "Error occurred! Error code = "
+                << ec.value()
+                << ". Message: " << ec.message();
+    }
+
+    on_finish();
+  }
+
+  // Here we perform the cleanup.
+  void on_finish() {
     delete this;
+  }
+
+  std::string process_request(asio::streambuf &request) {
+    // In this method we parse the request, process it and prepare the request.
+
+    // Emulate CPU-consuming operations.
+    int i = 0;
+    while (i != 1000000)
+      i++;
+
+    // Emulate operations that block the thread (e.g. sync I/O operations).
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Prepare and return the response message.
+    std::string response = "Response\n";
+    return response;
   }
 };
 

@@ -20,6 +20,6 @@ if (Boost_FOUND)
     target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 endif ()
 
-target_link_libraries(${PROJECT_NAME} ws2_32)
+target_link_libraries(${PROJECT_NAME} ws2_32 wsock32)
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "sync_tcp_serv")
 

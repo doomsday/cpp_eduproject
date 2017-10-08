@@ -1,5 +1,5 @@
 //
-// Implementing an asynchronous iterative TCP server
+// Implementing an asynchronous TCP server
 //
 
 #include <iostream>
@@ -8,6 +8,8 @@
 
 using namespace boost;
 
+const unsigned int DEFAULT_THREAD_POOL_SIZE = 2;
+
 int main() {
 
   unsigned short port_num = 3333;
@@ -15,8 +17,17 @@ int main() {
   try {
 
     server srv;
-    srv.start(port_num);
 
+    unsigned int thread_pool_size = std::thread::hardware_concurrency() * 2;
+
+    if (thread_pool_size == 0) {
+      thread_pool_size = DEFAULT_THREAD_POOL_SIZE;
+    }
+
+    // Method does not block.
+    srv.start(port_num, thread_pool_size);
+
+    // Allow the server to run for some time.
     std::this_thread::sleep_for(std::chrono::seconds(60));
 
     srv.stop();
