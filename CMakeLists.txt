@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -pedantic")
 
 set(SOURCE_FILES
         src/main.cpp
-        src/service.hpp src/acceptor.hpp src/server.hpp)
+        src/http_errors_category.hpp src/HTTPResponse.hpp src/HTTPRequest.hpp src/HTTPClient.hpp)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
@@ -21,5 +21,5 @@ if (Boost_FOUND)
 endif ()
 
 target_link_libraries(${PROJECT_NAME} ws2_32 wsock32)
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "sync_tcp_serv")
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "http_client")
 
