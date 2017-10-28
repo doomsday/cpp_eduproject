@@ -1,60 +1,41 @@
 //
-// Implementing the HTTP client application.
+// Implementing an asynchronous TCP server
 //
 
-#include <boost/predef.h> // Tools to identify the OS.
-
-// We need this to enable cancelling of I/O operations on Windows XP, Windows Server 2003 and earlier. Refer to
-// "http://www.boost.org/doc/libs/1_58_0/doc/html/boost_asio/reference/basic_stream_socket/cancel/overload1.html"
-// for details.
-#ifdef BOOST_OS_WINDOWS
-#if _WIN32_WINNT <= 0x0502 // Windows Server 2003 or earlier.
-#define BOOST_ASIO_DISABLE_IOCP
-#define BOOST_ASIO_ENABLE_CANCELIO
-#endif
-#endif
-
 #include <iostream>
-#include "HTTPRequest.hpp"
-#include "HTTPClient.hpp"
+#include <boost/asio.hpp>
+#include "server.hpp"
 
 using namespace boost;
 
-void handler(const HTTPRequest& request, const HTTPResponse& response, const system::error_code& ec) {
-  if (ec == 0) {
-    std::cout << "RESPONSE TO REQUEST #" << request.get_id() << ":\n" << response.get_response().rdbuf();
-  } else if (ec == asio::error::operation_aborted) {
-    std::cout << "Request #" << request.get_id() << " has been cancelled by the user" << std::endl;
-  } else {
-    std::cout << "Request #" << request.get_id() << " failed! Error code = " << ec.value() << ". Error message = "
-              << ec.message() << std::endl;
-  }
-}
+const unsigned int DEFAULT_THREAD_POOL_SIZE = 2;
 
 int main() {
 
+  unsigned short port_num = 3333;
+
   try {
 
-    HTTPClient client;
+    server srv;
 
-    std::shared_ptr<HTTPRequest> request_one = client.create_request(1);
-    request_one->set_host("tcpipguide.com");
-    request_one->set_uri("/free/diagrams/httpresponse.png");
-    request_one->set_port(80);
-    request_one->set_callback(handler);
+    unsigned int thread_pool_size = std::thread::hardware_concurrency() * 2;
 
-    request_one->execute();
+    if (thread_pool_size == 0) {
+      thread_pool_size = DEFAULT_THREAD_POOL_SIZE;
+    }
 
-    // Do nothing for 15 seconds, letting the request complete.
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    // Method does not block.
+    srv.start(port_num, thread_pool_size);
 
-    // Closing the client and exiting the application.
-    client.close();
+    // Allow the server to run for some time.
+    std::this_thread::sleep_for(std::chrono::seconds(600000));
+
+    srv.stop();
 
   } catch (system::system_error &e) {
     std::cout << "Error occurred! Error code = "
               << e.code() << ". Message: "
-              << e.what() << std::endl;
+              << e.what();
     return e.code().value();
   }
 
