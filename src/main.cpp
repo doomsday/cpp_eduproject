@@ -1,28 +1,55 @@
 //
-// Using composite buffers for scatter/gather operations: Preparing a composite buffer for an input operation.
+// Using timers.
 //
 
-#include <boost/asio.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <iostream>
 
 using namespace boost;
 
 int main() {
 
-  // Step 1. Allocate simple buffers.
-  char part1[6];
-  char part2[3];
-  char part3[7];
+  asio::io_service ios;
 
-  // Step 2. Create an object representing a composite buffer.
-  std::vector<asio::mutable_buffer> composite_buffer;
+  asio::steady_timer t1(ios);
+  // Switches the timer to a non-expired state and starts it.
+  t1.expires_from_now(std::chrono::seconds(2));
 
-  // Step 3. Add simple buffers to the composite buffer object.
-  composite_buffer.push_back(asio::mutable_buffer(part1, sizeof(part1)));
-  composite_buffer.push_back(asio::mutable_buffer(part2, sizeof(part2)));
-  composite_buffer.push_back(asio::mutable_buffer(part3, sizeof(part3)));
+  asio::steady_timer t2(ios);
+  t2.expires_from_now(std::chrono::seconds(5));
 
-  // Now composite_buffer can be used with Boost.Asio input operation as if it was a simple buffer
-  // represented by contiguous block of memory.
+  // Define and set a callback function that is to be called when the t1 expires.
+  t1.async_wait([&t2](boost::system::error_code ec) {
+    if (ec == 0) {
+      std::cout << "Timer #1 has expired!" << std::endl;
+    } else if (ec == asio::error::operation_aborted) {
+      std::cout << "Timer #1 has been cancelled!" << std::endl;
+    } else {
+      std::cout << "Error occurred! Error code = "
+                << ec.value()
+                << ". Message: " << ec.message()
+                << std::endl;
+    }
+
+    t2.cancel();
+  });
+
+  t2.async_wait([](boost::system::error_code ec) {
+    if (ec == 0) {
+      std::cout << "Timer #2 has expired!" << std::endl;
+    } else if (ec == asio::error::operation_aborted) {
+      std::cout << "Timer #2 has been cancelled!" << std::endl;
+    } else {
+      std::cout << "Error occurred! Error code = "
+                << ec.value()
+                << ". Message: " << ec.message()
+                << std::endl;
+    }
+  });
+
+  // The method blocks until both the timers expire. The expiration callbacks will be called in the context of
+  // the thread that called 'run()'.
+  ios.run();
 
   return EXIT_SUCCESS;
 }
