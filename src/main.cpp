@@ -1,32 +1,27 @@
 //
-// Adding SSL/TLS support to server applications
+// Using composite buffers for scatter/gather operations: Preparing a composite buffer for gather output operations.
 //
 
-#include <iostream>
 #include <boost/asio.hpp>
-#include "server.hpp"
 
 using namespace boost;
 
 int main() {
+  // Steps 1 and 2. Create and fill simple buffers.
+  const char *part1 = "Hello ";
+  const char *part2 = "my ";
+  const char *part3 = "friend!";
 
-  unsigned short port_num = 3333;
+  // Step 3. Create an object representing a composite buffer.
+  std::vector<asio::const_buffer> composite_buffer;
 
-  try {
+  // Step 4. Add simple buffers to the composite buffer.
+  composite_buffer.push_back(asio::const_buffer(part1, 6));
+  composite_buffer.push_back(asio::const_buffer(part2, 3));
+  composite_buffer.push_back(asio::const_buffer(part3, 7));
 
-    server srv;
-    srv.start(port_num);
-
-    std::this_thread::sleep_for(std::chrono::seconds(60));
-
-    srv.stop();
-
-  } catch (system::system_error &e) {
-    std::cout << "Error occurred! Error code = "
-              << e.code() << ". Message: "
-              << e.what();
-    return e.code().value();
-  }
+  // Step 5. Now composite_buffer can be used with Boost.Asio output operations as if it was
+  // as simple buffer represented by contiguous block of memory.
 
   return EXIT_SUCCESS;
 }

@@ -7,21 +7,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -pedantic")
 
 set(SOURCE_FILES
         src/main.cpp
-        src/service.hpp src/acceptor.hpp src/server.hpp)
+        )
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
-find_package(Boost 1.64.0 COMPONENTS system thread filesystem REQUIRED)
-find_package(OpenSSL REQUIRED)
+find_package(Boost 1.64.0 COMPONENTS system REQUIRED)
 
-if (Boost_FOUND AND ${OPENSSL_FOUND})
+if (Boost_FOUND)
     message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
     message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
     message(STATUS "Boost_VERSION: ${Boost_VERSION}")
-    include_directories(${Boost_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR})
-    target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+    include_directories(${Boost_INCLUDE_DIRS})
+    target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 endif ()
 
 target_link_libraries(${PROJECT_NAME} ws2_32)
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "sync_ssl_serv")
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "composite_buf")
 
